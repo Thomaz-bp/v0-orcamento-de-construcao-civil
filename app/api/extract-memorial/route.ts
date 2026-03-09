@@ -24,13 +24,20 @@ const ExtractionResponseSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { projectId, text } = await request.json()
+    console.log('[v0] extract-memorial: Starting extraction')
+    const body = await request.json()
+    const { projectId, text } = body
+    
+    console.log('[v0] extract-memorial: projectId:', projectId)
+    console.log('[v0] extract-memorial: text length:', text?.length || 0)
 
     if (!projectId || !text) {
+      console.log('[v0] extract-memorial: Missing required fields')
       return Response.json({ error: 'projectId e text são obrigatórios' }, { status: 400 })
     }
 
     const supabase = await createClient()
+    console.log('[v0] extract-memorial: Supabase client created')
 
     // Create memorial record
     const { data: memorial, error: memorialError } = await supabase
@@ -45,10 +52,14 @@ export async function POST(request: Request) {
       .single()
 
     if (memorialError) {
+      console.log('[v0] extract-memorial: Memorial insert error:', memorialError.message)
       return Response.json({ error: memorialError.message }, { status: 500 })
     }
 
+    console.log('[v0] extract-memorial: Memorial created with id:', memorial.id)
+
     try {
+      console.log('[v0] extract-memorial: Starting AI extraction with Groq')
       // Extract requirements using AI
       const { object } = await generateObject({
         model: groq('llama-3.3-70b-versatile'),
@@ -106,6 +117,7 @@ ${text}`,
         summary: object.summary,
       })
     } catch (aiError) {
+      console.log('[v0] extract-memorial: AI extraction error:', aiError)
       // Update memorial status to error
       await supabase
         .from('memorials')
@@ -115,7 +127,7 @@ ${text}`,
       throw aiError
     }
   } catch (error) {
-    console.error('Error extracting memorial:', error)
+    console.error('[v0] extract-memorial: Final error:', error)
     return Response.json(
       { error: error instanceof Error ? error.message : 'Erro ao processar memorial' },
       { status: 500 }
