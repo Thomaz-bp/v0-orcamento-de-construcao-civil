@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createGroq } from '@ai-sdk/groq'
 import { generateObject } from 'ai'
 import { z } from 'zod'
@@ -36,8 +36,8 @@ export async function POST(request: Request) {
       return Response.json({ error: 'projectId e text são obrigatórios' }, { status: 400 })
     }
 
-    const supabase = await createClient()
-    console.log('[v0] extract-memorial: Supabase client created')
+    const supabase = createAdminClient()
+    console.log('[v0] extract-memorial: Supabase admin client created')
 
     // Create memorial record
     const { data: memorial, error: memorialError } = await supabase
