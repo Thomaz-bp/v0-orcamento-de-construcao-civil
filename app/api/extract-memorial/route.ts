@@ -1,43 +1,35 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createGroq } from '@ai-sdk/groq'
-import { generateObject } from 'ai'
-import { z } from 'zod'
+import { generateText } from 'ai'
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
 })
 
-const RequirementSchema = z.object({
-  section: z.string().describe('Seção ou capítulo do memorial (ex: "3.1 Instalações Elétricas")'),
-  application_location: z.string().describe('Local de aplicação do material (ex: "Banheiros", "Área Externa")'),
-  generic_item: z.string().describe('Descrição genérica do item/material requerido'),
-  attributes: z.record(z.string()).describe('Atributos técnicos extraídos (ex: {seção_mm2: "2.5", material: "cobre"})'),
-  restrictions: z.record(z.string()).describe('Restrições ou exigências (ex: {certificacao: "INMETRO", marca: "Tigre ou similar"})'),
-  source_excerpt: z.string().describe('Trecho original do texto que originou este requisito'),
-  confidence: z.number().min(0).max(1).describe('Nível de confiança na extração (0-1)'),
-})
+interface ExtractedRequirement {
+  section: string
+  application_location: string
+  generic_item: string
+  attributes: Record<string, string>
+  restrictions: Record<string, string>
+  source_excerpt: string
+  confidence: number
+}
 
-const ExtractionResponseSchema = z.object({
-  requirements: z.array(RequirementSchema),
-  summary: z.string().describe('Resumo geral do memorial'),
-})
+interface ExtractionResponse {
+  requirements: ExtractedRequirement[]
+  summary: string
+}
 
 export async function POST(request: Request) {
   try {
-    console.log('[v0] extract-memorial: Starting extraction')
-    const body = await request.json()
-    const { projectId, text } = body
-    
-    console.log('[v0] extract-memorial: projectId:', projectId)
-    console.log('[v0] extract-memorial: text length:', text?.length || 0)
+    const { projectId, text } = await request.json()
 
     if (!projectId || !text) {
-      console.log('[v0] extract-memorial: Missing required fields')
       return Response.json({ error: 'projectId e text são obrigatórios' }, { status: 400 })
     }
 
     const supabase = createAdminClient()
-    console.log('[v0] extract-memorial: Supabase admin client created')
 
     // Create memorial record
     const { data: memorial, error: memorialError } = await supabase
@@ -52,34 +44,48 @@ export async function POST(request: Request) {
       .single()
 
     if (memorialError) {
-      console.log('[v0] extract-memorial: Memorial insert error:', memorialError.message)
       return Response.json({ error: memorialError.message }, { status: 500 })
     }
 
-    console.log('[v0] extract-memorial: Memorial created with id:', memorial.id)
-
     try {
-      console.log('[v0] extract-memorial: Starting AI extraction with Groq')
       // Extract requirements using AI
-      const { object } = await generateObject({
+      const { text: aiResponse } = await generateText({
         model: groq('llama-3.3-70b-versatile'),
-        schema: ExtractionResponseSchema,
         prompt: `Você é um especialista em orçamentos de construção civil.
 Analise o seguinte memorial descritivo e extraia todos os requisitos técnicos de materiais.
 
-Para cada requisito identificado, extraia:
-- Seção/capítulo de onde veio
-- Local de aplicação (se mencionado)
-- Item genérico (descrição do material)
-- Atributos técnicos (dimensões, especificações, normas)
-- Restrições (marcas aprovadas, certificações exigidas)
-- Trecho original do texto
-
-Seja preciso e mantenha rastreabilidade com o texto original.
+Responda APENAS com um JSON válido no seguinte formato (sem texto adicional):
+{
+  "requirements": [
+    {
+      "section": "Seção ou capítulo do memorial",
+      "application_location": "Local de aplicação",
+      "generic_item": "Descrição do material",
+      "attributes": {"chave": "valor"},
+      "restrictions": {"chave": "valor"},
+      "source_excerpt": "Trecho original do texto",
+      "confidence": 0.9
+    }
+  ],
+  "summary": "Resumo do memorial"
+}
 
 MEMORIAL DESCRITIVO:
 ${text}`,
       })
+      
+      // Parse the JSON response
+      let object: ExtractionResponse
+      try {
+        // Extract JSON from response (handle potential markdown code blocks)
+        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) {
+          throw new Error('Não foi possível encontrar JSON na resposta')
+        }
+        object = JSON.parse(jsonMatch[0])
+      } catch (parseError) {
+        throw new Error('Erro ao processar resposta da IA: formato inválido')
+      }
 
       // Insert requirements
       if (object.requirements.length > 0) {
@@ -117,7 +123,6 @@ ${text}`,
         summary: object.summary,
       })
     } catch (aiError) {
-      console.log('[v0] extract-memorial: AI extraction error:', aiError)
       // Update memorial status to error
       await supabase
         .from('memorials')
@@ -127,7 +132,6 @@ ${text}`,
       throw aiError
     }
   } catch (error) {
-    console.error('[v0] extract-memorial: Final error:', error)
     return Response.json(
       { error: error instanceof Error ? error.message : 'Erro ao processar memorial' },
       { status: 500 }
