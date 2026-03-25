@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { FileText, ExternalLink } from "lucide-react"
+import { FileText, ExternalLink, Calendar } from "lucide-react"
 import type { Memorial } from "@/lib/types"
 
 interface MemorialWithProject extends Memorial {
@@ -64,83 +64,130 @@ export default function MemoriaisPage() {
     <AppShell>
       <PageHeader
         title="Memoriais"
-        description="Todos os memoriais descritivos carregados no sistema"
+        description="Memoriais descritivos"
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Lista de Memoriais
-          </CardTitle>
-          <CardDescription>
-            Memoriais são extraídos automaticamente via IA ao serem enviados em projetos
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-foreground" />
-            </div>
-          ) : memorials.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum memorial encontrado</p>
-              <p className="text-sm mt-1">
-                Memoriais são adicionados através da página de projetos
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Arquivo</TableHead>
-                  <TableHead>Projeto</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="w-24"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {memorials.map((memorial) => (
-                  <TableRow key={memorial.id}>
-                    <TableCell className="font-medium">
-                      {memorial.original_filename || "Sem nome"}
-                    </TableCell>
-                    <TableCell>
-                      {memorial.project ? (
-                        <Link 
-                          href={`/projetos/${memorial.project.id}`}
-                          className="text-primary hover:underline"
-                        >
-                          {memorial.project.name}
-                        </Link>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(memorial.extraction_status || "pending")}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(memorial.created_at).toLocaleDateString("pt-BR")}
-                    </TableCell>
-                    <TableCell>
-                      {memorial.project && (
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/projetos/${memorial.project.id}`}>
-                            <ExternalLink className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="p-4 sm:p-6">
+        <Card>
+          <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+              Lista de Memoriais
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              Extraídos automaticamente via IA ao serem enviados
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 sm:px-6 sm:pb-6">
+            {loading ? (
+              <div className="flex h-32 items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-foreground" />
+              </div>
+            ) : memorials.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground sm:py-12">
+                <FileText className="mx-auto mb-4 h-10 w-10 opacity-50 sm:h-12 sm:w-12" />
+                <p className="text-sm sm:text-base">Nenhum memorial encontrado</p>
+                <p className="mt-1 text-xs sm:text-sm">
+                  Memoriais são adicionados através da página de projetos
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Mobile Cards */}
+                <div className="grid gap-3 sm:hidden">
+                  {memorials.map((memorial) => (
+                    <div
+                      key={memorial.id}
+                      className="rounded-lg border border-border p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {memorial.original_filename || "Sem nome"}
+                          </p>
+                          {memorial.project && (
+                            <Link
+                              href={`/projetos/${memorial.project.id}`}
+                              className="mt-0.5 block truncate text-xs text-primary hover:underline"
+                            >
+                              {memorial.project.name}
+                            </Link>
+                          )}
+                        </div>
+                        {memorial.project && (
+                          <Button variant="ghost" size="icon" asChild className="h-8 w-8 shrink-0">
+                            <Link href={`/projetos/${memorial.project.id}`}>
+                              <ExternalLink className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {getStatusBadge(memorial.extraction_status || "pending")}
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(memorial.created_at).toLocaleDateString("pt-BR")}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table */}
+                <div className="hidden sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Arquivo</TableHead>
+                        <TableHead>Projeto</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead className="w-24"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {memorials.map((memorial) => (
+                        <TableRow key={memorial.id}>
+                          <TableCell className="font-medium">
+                            {memorial.original_filename || "Sem nome"}
+                          </TableCell>
+                          <TableCell>
+                            {memorial.project ? (
+                              <Link 
+                                href={`/projetos/${memorial.project.id}`}
+                                className="text-primary hover:underline"
+                              >
+                                {memorial.project.name}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(memorial.extraction_status || "pending")}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {new Date(memorial.created_at).toLocaleDateString("pt-BR")}
+                          </TableCell>
+                          <TableCell>
+                            {memorial.project && (
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link href={`/projetos/${memorial.project.id}`}>
+                                  <ExternalLink className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </AppShell>
   )
 }

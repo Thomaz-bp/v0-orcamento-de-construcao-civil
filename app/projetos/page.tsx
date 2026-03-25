@@ -43,25 +43,25 @@ export default async function ProjetosPage({
     <AppShell>
       <PageHeader
         title="Projetos"
-        description="Gerencie seus projetos de orçamento"
+        description="Gerencie seus projetos"
       >
-        <Button asChild>
+        <Button asChild size="sm" className="sm:size-default">
           <Link href="/projetos/novo">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Projeto
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Novo Projeto</span>
           </Link>
         </Button>
       </PageHeader>
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Search */}
-        <div className="mb-6 flex items-center gap-4">
-          <form className="relative flex-1 max-w-md">
+        <div className="mb-4 sm:mb-6">
+          <form className="relative w-full sm:max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               name="search"
-              placeholder="Buscar por nome, cliente ou cidade..."
+              placeholder="Buscar projetos..."
               defaultValue={search}
               className="pl-9"
             />
@@ -70,12 +70,12 @@ export default async function ProjetosPage({
 
         {/* Projects Grid */}
         {projects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
-            <FolderKanban className="mb-4 h-12 w-12 text-muted-foreground/50" />
-            <h3 className="mb-1 text-lg font-medium text-foreground">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12 sm:py-16">
+            <FolderKanban className="mb-4 h-10 w-10 text-muted-foreground/50 sm:h-12 sm:w-12" />
+            <h3 className="mb-1 text-base font-medium text-foreground sm:text-lg">
               Nenhum projeto cadastrado
             </h3>
-            <p className="mb-4 text-sm text-muted-foreground">
+            <p className="mb-4 text-center text-sm text-muted-foreground">
               Comece criando seu primeiro projeto de orçamento.
             </p>
             <Button asChild>
@@ -86,46 +86,48 @@ export default async function ProjetosPage({
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
               <Card key={project.id} className="group transition-colors hover:border-primary/50">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-base font-medium">
+                <CardHeader className="p-4 pb-2 sm:pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="min-w-0 flex-1 truncate text-sm font-medium sm:text-base">
                       <Link href={`/projetos/${project.id}`} className="hover:underline">
                         {project.name}
                       </Link>
                     </CardTitle>
-                    <StatusBadge variant={getProjectStatusVariant(project.status)}>
+                    <StatusBadge variant={getProjectStatusVariant(project.status)} className="shrink-0 text-xs">
                       {getProjectStatusLabel(project.status)}
                     </StatusBadge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid gap-2 text-sm text-muted-foreground">
+                <CardContent className="p-4 pt-0">
+                  <div className="grid gap-1.5 text-xs text-muted-foreground sm:gap-2 sm:text-sm">
                     {project.client_name && (
-                      <p>{project.client_name}</p>
+                      <p className="truncate">{project.client_name}</p>
                     )}
                     {(project.location_city || project.location_uf) && (
                       <p className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {project.location_city}{project.location_city && project.location_uf && '/'}{project.location_uf}
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">
+                          {project.location_city}{project.location_city && project.location_uf && '/'}{project.location_uf}
+                        </span>
                       </p>
                     )}
                     <p className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
+                      <Calendar className="h-3 w-3 shrink-0" />
                       {new Date(project.updated_at).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
                   
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                  <div className="mt-3 flex items-center justify-between border-t border-border pt-3 sm:mt-4 sm:pt-4">
                     <div className="text-xs text-muted-foreground">
                       BDI: {project.bdi_percentage}% | Margem: {project.margin_percentage}%
                     </div>
-                    <Button variant="ghost" size="sm" asChild>
+                    <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-xs sm:h-8 sm:px-3">
                       <Link href={`/projetos/${project.id}`}>
                         Abrir
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        <ArrowRight className="ml-1 h-3 w-3 sm:ml-2 sm:h-4 sm:w-4" />
                       </Link>
                     </Button>
                   </div>
