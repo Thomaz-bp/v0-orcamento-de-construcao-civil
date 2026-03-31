@@ -21,8 +21,10 @@ import {
   Percent,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { Project, Memorial, Requirement } from '@/lib/types'
+import type { Project, Memorial, Requirement, Rfq } from '@/lib/types'
 import { MemorialUpload } from '@/components/memorial-upload'
+import { ProjectRfqsTab } from '@/components/project-rfqs-tab'
+import { ProjectBudgetTab } from '@/components/project-budget-tab'
 
 async function getProjectData(id: string) {
   const supabase = await createClient()
@@ -33,7 +35,10 @@ async function getProjectData(id: string) {
     supabase.from('requirements')
       .select('*, memorials!inner(project_id)')
       .eq('memorials.project_id', id),
-    supabase.from('rfqs').select('id, status').eq('project_id', id),
+    supabase.from('rfqs')
+      .select('id, title, status, deadline, created_at, rfq_items(count)')
+      .eq('project_id', id)
+      .order('created_at', { ascending: false }),
   ])
 
   if (projectRes.error || !projectRes.data) {
@@ -44,6 +49,7 @@ async function getProjectData(id: string) {
     project: projectRes.data as Project,
     memorials: (memorialsRes.data || []) as Memorial[],
     requirements: (requirementsRes.data || []) as Requirement[],
+    rfqs: (rfqsRes.data || []) as Rfq[],
     rfqCount: rfqsRes.data?.length || 0,
   }
 }
@@ -60,7 +66,7 @@ export default async function ProjectDetailPage({
     notFound()
   }
 
-  const { project, memorials, requirements, rfqCount } = data
+  const { project, memorials, requirements, rfqs, rfqCount } = data
 
   const pendingRequirements = requirements.filter(r => r.status === 'pending').length
   const approvedRequirements = requirements.filter(r => r.status === 'approved').length
@@ -233,42 +239,17 @@ export default async function ProjectDetailPage({
 
           {/* Cotações Tab */}
           <TabsContent value="cotacoes">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Solicitações de Cotação (RFQ)</CardTitle>
-                <Button size="sm" asChild>
-                  <Link href={`/projetos/${project.id}/cotacoes/nova`}>
-                    Nova RFQ
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="py-8 text-center text-muted-foreground">
-                  <Send className="mx-auto mb-3 h-10 w-10 opacity-50" />
-                  <p>Nenhuma cotação criada ainda.</p>
-                  <p className="text-sm">Crie uma RFQ após aprovar os requisitos.</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ProjectRfqsTab projectId={project.id} rfqs={rfqs} />
           </TabsContent>
 
           {/* Orçamento Tab */}
           <TabsContent value="orcamento">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Orçamento Consolidado</CardTitle>
-                <Button size="sm" disabled>
-                  Gerar Proposta
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="py-8 text-center text-muted-foreground">
-                  <Calculator className="mx-auto mb-3 h-10 w-10 opacity-50" />
-                  <p>Orçamento ainda não consolidado.</p>
-                  <p className="text-sm">Complete as cotações para gerar o orçamento.</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ProjectBudgetTab 
+              projectId={project.id} 
+              hasClosedRfqs={rfqs.some(r => r.status === 'closed')}
+              bdiPercentage={project.bdi_percentage}
+              marginPercentage={project.margin_percentage}
+            />
           </TabsContent>
         </Tabs>
       </div>
